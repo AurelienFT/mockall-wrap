@@ -1,0 +1,27 @@
+[package]
+name = "mockall_wrap"
+version = "0.11.2"
+authors = ["Aurélien FOUCAULT <aurelien.foucault@epitech.eu>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/AurelienFT/mockall_wrap"
+categories = ["development-tools::testing"]
+keywords = ["mock", "mocking", "testing", "mockall"]
+documentation = "https://docs.rs/mockall_wrap"
+edition = "2021"
+description = """
+A wrapper around mockall mocks to create multiple mocks instances that shares the expectations
+"""
+
+[lib]
+proc-macro = true
+
+[features]
+
+[dependencies]
+cfg-if = "1.0"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["extra-traits", "full"] }
+
+[dev-dependencies]
+pretty_assertions = "1.3"
