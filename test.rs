@@ -9,6 +9,7 @@ mod tests {
         fn test_method(&self, arg: u32) -> u32;
         fn test_method_2(&mut self, arg: u32) -> u32;
         fn clone_box(&self) -> Box<dyn TestTrait>;
+        fn test_method_3(&self, arg: u32) -> &u32;
     }
     #[allow(non_snake_case)]
     #[allow(missing_docs)]
@@ -1755,6 +1756,440 @@ mod tests {
                 }
             }
         }
+        #[allow(missing_docs)]
+        pub mod __test_method_3 {
+            use super::*;
+            use ::mockall::CaseTreeExt;
+            use ::std::{
+                boxed::Box, mem, ops::{DerefMut, Range},
+                sync::Mutex, vec::Vec,
+            };
+            enum Rfunc {
+                Default(Option<u32>),
+                Const(u32),
+                _Phantom(Mutex<Box<dyn Fn() + Send>>),
+            }
+            impl Rfunc {
+                fn call(&self) -> std::result::Result<&u32, &'static str> {
+                    match self {
+                        Rfunc::Default(Some(ref __mockall_o)) => {
+                            ::std::result::Result::Ok(__mockall_o)
+                        }
+                        Rfunc::Default(None) => {
+                            Err(
+                                "Returning default values requires the \"nightly\" feature",
+                            )
+                        }
+                        Rfunc::Const(ref __mockall_o) => {
+                            ::std::result::Result::Ok(__mockall_o)
+                        }
+                        Rfunc::_Phantom(_) => {
+                            ::core::panicking::panic(
+                                "internal error: entered unreachable code",
+                            )
+                        }
+                    }
+                }
+            }
+            impl std::default::Default for Rfunc {
+                fn default() -> Self {
+                    use ::mockall::ReturnDefault;
+                    Rfunc::Default(
+                        ::mockall::DefaultReturner::<u32>::maybe_return_default(),
+                    )
+                }
+            }
+            enum Matcher {
+                Always,
+                Func(Box<dyn Fn(&u32) -> bool + Send>),
+                FuncSt(::mockall::Fragile<Box<dyn Fn(&u32) -> bool>>),
+                Pred(Box<(Box<dyn ::mockall::Predicate<u32> + Send>,)>),
+                _Phantom(Box<dyn Fn() + Send>),
+            }
+            impl Matcher {
+                #[allow(clippy::ptr_arg)]
+                fn matches(&self, arg: &u32) -> bool {
+                    match self {
+                        Matcher::Always => true,
+                        Matcher::Func(__mockall_f) => __mockall_f(arg),
+                        Matcher::FuncSt(__mockall_f) => (__mockall_f.get())(arg),
+                        Matcher::Pred(__mockall_pred) => {
+                            [__mockall_pred.0.eval(arg)]
+                                .iter()
+                                .all(|__mockall_x| *__mockall_x)
+                        }
+                        _ => {
+                            ::core::panicking::panic(
+                                "internal error: entered unreachable code",
+                            )
+                        }
+                    }
+                }
+            }
+            impl Default for Matcher {
+                #[allow(unused_variables)]
+                fn default() -> Self {
+                    Matcher::Always
+                }
+            }
+            impl ::std::fmt::Display for Matcher {
+                fn fmt(
+                    &self,
+                    __mockall_fmt: &mut ::std::fmt::Formatter<'_>,
+                ) -> ::std::fmt::Result {
+                    match self {
+                        Matcher::Always => {
+                            __mockall_fmt.write_fmt(format_args!("<anything>"))
+                        }
+                        Matcher::Func(_) => {
+                            __mockall_fmt.write_fmt(format_args!("<function>"))
+                        }
+                        Matcher::FuncSt(_) => {
+                            __mockall_fmt
+                                .write_fmt(format_args!("<single threaded function>"))
+                        }
+                        Matcher::Pred(__mockall_p) => {
+                            __mockall_fmt.write_fmt(format_args!("{0}", __mockall_p.0))
+                        }
+                        _ => {
+                            ::core::panicking::panic(
+                                "internal error: entered unreachable code",
+                            )
+                        }
+                    }
+                }
+            }
+            /// Holds the stuff that is independent of the output type
+            struct Common {
+                matcher: Mutex<Matcher>,
+                seq_handle: Option<::mockall::SeqHandle>,
+                times: ::mockall::Times,
+            }
+            impl std::default::Default for Common {
+                fn default() -> Self {
+                    Common {
+                        matcher: Mutex::new(Matcher::default()),
+                        seq_handle: None,
+                        times: ::mockall::Times::default(),
+                    }
+                }
+            }
+            impl Common {
+                fn call(&self, desc: &str) {
+                    self.times
+                        .call()
+                        .unwrap_or_else(|m| {
+                            let desc = {
+                                let res = ::alloc::fmt::format(
+                                    format_args!("{0}", self.matcher.lock().unwrap()),
+                                );
+                                res
+                            };
+                            {
+                                ::std::rt::panic_fmt(
+                                    format_args!(
+                                        "{0}: Expectation({1}) {2}",
+                                        "MockTestTrait::test_method_3",
+                                        desc,
+                                        m,
+                                    ),
+                                );
+                            };
+                        });
+                    self.verify_sequence(desc);
+                    if ::mockall::ExpectedCalls::TooFew != self.times.is_satisfied() {
+                        self.satisfy_sequence()
+                    }
+                }
+                fn in_sequence(
+                    &mut self,
+                    __mockall_seq: &mut ::mockall::Sequence,
+                ) -> &mut Self {
+                    if !self.times.is_exact() {
+                        {
+                            ::std::rt::begin_panic(
+                                "Only Expectations with an exact call count have sequences",
+                            );
+                        }
+                    }
+                    self.seq_handle = Some(__mockall_seq.next_handle());
+                    self
+                }
+                fn is_done(&self) -> bool {
+                    self.times.is_done()
+                }
+                #[allow(clippy::ptr_arg)]
+                fn matches(&self, arg: &u32) -> bool {
+                    self.matcher.lock().unwrap().matches(arg)
+                }
+                /// Forbid this expectation from ever being called.
+                fn never(&mut self) {
+                    self.times.never();
+                }
+                fn satisfy_sequence(&self) {
+                    if let Some(__mockall_handle) = &self.seq_handle {
+                        __mockall_handle.satisfy()
+                    }
+                }
+                /// Expect this expectation to be called any number of times
+                /// contained with the given range.
+                fn times<MockallR>(&mut self, __mockall_r: MockallR)
+                where
+                    MockallR: Into<::mockall::TimesRange>,
+                {
+                    self.times.times(__mockall_r)
+                }
+                fn with<MockallMatcher0: ::mockall::Predicate<u32> + Send + 'static>(
+                    &mut self,
+                    arg: MockallMatcher0,
+                ) {
+                    let mut __mockall_guard = self.matcher.lock().unwrap();
+                    *__mockall_guard
+                        .deref_mut() = Matcher::Pred(Box::new((Box::new(arg),)));
+                }
+                fn withf<MockallF>(&mut self, __mockall_f: MockallF)
+                where
+                    MockallF: Fn(&u32) -> bool + Send + 'static,
+                {
+                    let mut __mockall_guard = self.matcher.lock().unwrap();
+                    *__mockall_guard.deref_mut() = Matcher::Func(Box::new(__mockall_f));
+                }
+                fn withf_st<MockallF>(&mut self, __mockall_f: MockallF)
+                where
+                    MockallF: Fn(&u32) -> bool + 'static,
+                {
+                    let mut __mockall_guard = self.matcher.lock().unwrap();
+                    *__mockall_guard
+                        .deref_mut() = Matcher::FuncSt(
+                        ::mockall::Fragile::new(Box::new(__mockall_f)),
+                    );
+                }
+                fn verify_sequence(&self, desc: &str) {
+                    if let Some(__mockall_handle) = &self.seq_handle {
+                        __mockall_handle.verify(desc)
+                    }
+                }
+            }
+            impl Drop for Common {
+                fn drop(&mut self) {
+                    if !::std::thread::panicking() {
+                        let desc = {
+                            let res = ::alloc::fmt::format(
+                                format_args!("{0}", self.matcher.lock().unwrap()),
+                            );
+                            res
+                        };
+                        match self.times.is_satisfied() {
+                            ::mockall::ExpectedCalls::TooFew => {
+                                {
+                                    ::std::rt::panic_fmt(
+                                        format_args!(
+                                            "{0}: Expectation({1}) called {2} time(s) which is fewer than expected {3}",
+                                            "MockTestTrait::test_method_3",
+                                            desc,
+                                            self.times.count(),
+                                            self.times.minimum(),
+                                        ),
+                                    );
+                                };
+                            }
+                            ::mockall::ExpectedCalls::TooMany => {
+                                {
+                                    ::std::rt::panic_fmt(
+                                        format_args!(
+                                            "{0}: Expectation({1}) called {2} time(s) which is more than expected {3}",
+                                            "MockTestTrait::test_method_3",
+                                            desc,
+                                            self.times.count(),
+                                            self.times.maximum(),
+                                        ),
+                                    );
+                                };
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            /// Expectation type for methods taking a `&self` argument and
+            /// returning immutable references.  This is the type returned by
+            /// the `expect_*` methods.
+            pub struct Expectation {
+                common: Common,
+                rfunc: Rfunc,
+            }
+            #[allow(clippy::unused_unit)]
+            impl Expectation {
+                /// Call this [`Expectation`] as if it were the real method.
+                pub fn call(&self, arg: u32) -> &u32 {
+                    self.common
+                        .call(
+                            &{
+                                let res = ::alloc::fmt::format(
+                                    format_args!(
+                                        "MockTestTrait::test_method_3({0:?})",
+                                        ::mockall::MaybeDebugger(&arg),
+                                    ),
+                                );
+                                res
+                            },
+                        );
+                    self.rfunc
+                        .call()
+                        .unwrap_or_else(|m| {
+                            let desc = {
+                                let res = ::alloc::fmt::format(
+                                    format_args!("{0}", self.common.matcher.lock().unwrap()),
+                                );
+                                res
+                            };
+                            {
+                                ::std::rt::panic_fmt(
+                                    format_args!(
+                                        "{0}: Expectation({1}) {2}",
+                                        "MockTestTrait::test_method_3",
+                                        desc,
+                                        m,
+                                    ),
+                                );
+                            };
+                        })
+                }
+                /// Return a reference to a constant value from the `Expectation`
+                pub fn return_const(&mut self, __mockall_o: u32) -> &mut Self {
+                    self.rfunc = Rfunc::Const(__mockall_o);
+                    self
+                }
+                /// Add this expectation to a
+                /// [`Sequence`](../../../mockall/struct.Sequence.html).
+                pub fn in_sequence(
+                    &mut self,
+                    __mockall_seq: &mut ::mockall::Sequence,
+                ) -> &mut Self {
+                    self.common.in_sequence(__mockall_seq);
+                    self
+                }
+                fn is_done(&self) -> bool {
+                    self.common.is_done()
+                }
+                /// Validate this expectation's matcher.
+                #[allow(clippy::ptr_arg)]
+                fn matches(&self, arg: &u32) -> bool {
+                    self.common.matches(arg)
+                }
+                /// Forbid this expectation from ever being called.
+                pub fn never(&mut self) -> &mut Self {
+                    self.common.never();
+                    self
+                }
+                /// Create a new, default, [`Expectation`](struct.Expectation.html)
+                pub fn new() -> Self {
+                    Self::default()
+                }
+                /// Expect this expectation to be called exactly once.  Shortcut for
+                /// [`times(1)`](#method.times).
+                pub fn once(&mut self) -> &mut Self {
+                    self.times(1)
+                }
+                /// Restrict the number of times that that this method may be called.
+                ///
+                /// The argument may be:
+                /// * A fixed number: `.times(4)`
+                /// * Various types of range:
+                ///   - `.times(5..10)`
+                ///   - `.times(..10)`
+                ///   - `.times(5..)`
+                ///   - `.times(5..=10)`
+                ///   - `.times(..=10)`
+                /// * The wildcard: `.times(..)`
+                pub fn times<MockallR>(&mut self, __mockall_r: MockallR) -> &mut Self
+                where
+                    MockallR: Into<::mockall::TimesRange>,
+                {
+                    self.common.times(__mockall_r);
+                    self
+                }
+                /// Set matching crieteria for this Expectation.
+                ///
+                /// The matching predicate can be anything implemening the
+                /// [`Predicate`](../../../mockall/trait.Predicate.html) trait.  Only
+                /// one matcher can be set per `Expectation` at a time.
+                pub fn with<MockallMatcher0: ::mockall::Predicate<u32> + Send + 'static>(
+                    &mut self,
+                    arg: MockallMatcher0,
+                ) -> &mut Self {
+                    self.common.with(arg);
+                    self
+                }
+                /// Set a matching function for this Expectation.
+                ///
+                /// This is equivalent to calling [`with`](#method.with) with a
+                /// function argument, like `with(predicate::function(f))`.
+                pub fn withf<MockallF>(&mut self, __mockall_f: MockallF) -> &mut Self
+                where
+                    MockallF: Fn(&u32) -> bool + Send + 'static,
+                {
+                    self.common.withf(__mockall_f);
+                    self
+                }
+                /// Single-threaded version of [`withf`](#method.withf).
+                /// Can be used when the argument type isn't `Send`.
+                pub fn withf_st<MockallF>(&mut self, __mockall_f: MockallF) -> &mut Self
+                where
+                    MockallF: Fn(&u32) -> bool + 'static,
+                {
+                    self.common.withf_st(__mockall_f);
+                    self
+                }
+            }
+            impl Default for Expectation {
+                fn default() -> Self {
+                    Expectation {
+                        common: Common::default(),
+                        rfunc: Rfunc::default(),
+                    }
+                }
+            }
+            /// A collection of [`Expectation`](struct.Expectations.html)
+            /// objects.  Users will rarely if ever use this struct directly.
+            #[doc(hidden)]
+            pub struct Expectations(Vec<Expectation>);
+            impl Expectations {
+                /// Verify that all current expectations are satisfied and clear
+                /// them.
+                pub fn checkpoint(&mut self) -> std::vec::Drain<Expectation> {
+                    self.0.drain(..)
+                }
+                /// Create a new expectation for this method.
+                pub fn expect(&mut self) -> &mut Expectation {
+                    self.0.push(Expectation::default());
+                    let __mockall_l = self.0.len();
+                    &mut self.0[__mockall_l - 1]
+                }
+                pub fn new() -> Self {
+                    Self::default()
+                }
+            }
+            impl Default for Expectations {
+                fn default() -> Self {
+                    Expectations(Vec::new())
+                }
+            }
+            impl Expectations {
+                /// Simulate calling the real method.  Every current expectation
+                /// will be checked in FIFO order and the first one with
+                /// matching arguments will be used.
+                pub fn call(&self, arg: u32) -> Option<&u32> {
+                    self.0
+                        .iter()
+                        .find(|__mockall_e| {
+                            __mockall_e.matches(&arg)
+                                && (!__mockall_e.is_done() || self.0.len() == 1)
+                        })
+                        .map(move |__mockall_e| __mockall_e.call(arg))
+                }
+            }
+        }
     }
     #[allow(non_camel_case_types)]
     #[allow(non_snake_case)]
@@ -1763,6 +2198,7 @@ mod tests {
         test_method: __mock_MockTestTrait_TestTrait::__test_method::Expectations,
         test_method_2: __mock_MockTestTrait_TestTrait::__test_method_2::Expectations,
         clone_box: __mock_MockTestTrait_TestTrait::__clone_box::Expectations,
+        test_method_3: __mock_MockTestTrait_TestTrait::__test_method_3::Expectations,
     }
     impl ::std::default::Default for MockTestTrait_TestTrait {
         fn default() -> Self {
@@ -1770,6 +2206,7 @@ mod tests {
                 test_method: Default::default(),
                 test_method_2: Default::default(),
                 clone_box: Default::default(),
+                test_method_3: Default::default(),
             }
         }
     }
@@ -1785,6 +2222,9 @@ mod tests {
             }
             {
                 self.clone_box.checkpoint();
+            }
+            {
+                self.test_method_3.checkpoint();
             }
         }
     }
@@ -1863,6 +2303,26 @@ mod tests {
             };
             self.TestTrait_expectations.clone_box.call().expect(&no_match_msg)
         }
+        fn test_method_3(&self, arg: u32) -> &u32 {
+            let no_match_msg = {
+                let res = ::alloc::fmt::format(
+                    format_args!(
+                        "{0}: No matching expectation found",
+                        {
+                            let res = ::alloc::fmt::format(
+                                format_args!(
+                                    "MockTestTrait::test_method_3({0:?})",
+                                    ::mockall::MaybeDebugger(&arg),
+                                ),
+                            );
+                            res
+                        },
+                    ),
+                );
+                res
+            };
+            self.TestTrait_expectations.test_method_3.call(arg).expect(&no_match_msg)
+        }
     }
     impl MockTestTrait {
         #[must_use = "Must set return value when not using the \"nightly\" feature"]
@@ -1885,6 +2345,13 @@ mod tests {
             &mut self,
         ) -> &mut __mock_MockTestTrait_TestTrait::__clone_box::Expectation {
             self.TestTrait_expectations.clone_box.expect()
+        }
+        #[must_use = "Must set return value when not using the \"nightly\" feature"]
+        ///Create an [`Expectation`](__mock_MockTestTrait_TestTrait/__test_method_3/struct.Expectation.html) for mocking the `test_method_3` method
+        pub fn expect_test_method_3(
+            &mut self,
+        ) -> &mut __mock_MockTestTrait_TestTrait::__test_method_3::Expectation {
+            self.TestTrait_expectations.test_method_3.expect()
         }
     }
     pub struct MockTestTraitWrapper {
@@ -1915,6 +2382,9 @@ mod tests {
         fn clone_box(&self) -> Box<dyn TestTrait> {
             Box::new(self.clone())
         }
+        fn test_method_3(&self, arg: u32) -> &u32 {
+            self.inner.read().unwrap().test_method_3(arg)
+        }
     }
     extern crate test;
     #[cfg(test)]
@@ -1925,9 +2395,9 @@ mod tests {
             ignore: false,
             ignore_message: ::core::option::Option::None,
             source_file: "tests/mod.rs",
-            start_line: 10usize,
+            start_line: 11usize,
             start_col: 8usize,
-            end_line: 10usize,
+            end_line: 11usize,
             end_col: 18usize,
             compile_fail: false,
             no_run: false,
