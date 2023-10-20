@@ -17,11 +17,13 @@ fn generated_wrap(input: &proc_macro2::TokenStream, trait_has_mut: bool) -> Toke
     };
     let set_expectations = match trait_has_mut {
         true => quote! {
+            #[doc="Guarantees the borrowed &mut is owned exclusively by the closure"]
             pub fn set_expectations<F: FnOnce(&mut #mock_name)>(&mut self, g: F) {
                 g(&mut Arc::get_mut(&mut self.inner).unwrap().write().unwrap())
             }
         },
         false => quote! {
+            #[doc="Guarantees the borrowed &mut is owned exclusively by the closure"]
             pub fn set_expectations<F: FnOnce(&mut #mock_name)>(&mut self, g: F) {
                 g(&mut Arc::get_mut(&mut self.inner).unwrap())
             }
@@ -94,6 +96,7 @@ fn generated_wrap(input: &proc_macro2::TokenStream, trait_has_mut: bool) -> Toke
             }
 
             impl #struct_name {
+                #[doc="A wrapper around a mockall mock that share the expectation and when a clone_box is called it will return a boxed version of the mock instead of trigger the expectation."]
                 pub fn new() -> Self {
                     Self {
                         inner: #init_code,

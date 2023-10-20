@@ -2505,11 +2505,13 @@ mod tests {
         }
     }
     impl MockTestTraitWrapper {
+        ///A wrapper around a mockall mock that share the expectation and when a clone_box is called it will return a boxed version of the mock instead of trigger the expectation.
         pub fn new() -> Self {
             Self {
                 inner: Arc::new(RwLock::new(MockTestTrait::new())),
             }
         }
+        ///Guarantees the borrowed &mut is owned exclusively by the closure
         pub fn set_expectations<F: FnOnce(&mut MockTestTrait)>(&mut self, g: F) {
             g(&mut Arc::get_mut(&mut self.inner).unwrap().write().unwrap())
         }
