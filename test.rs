@@ -9,7 +9,7 @@ mod tests {
         fn test_method(&self, arg: u32) -> u32;
         fn test_method_2(&mut self, arg: u32) -> u32;
         fn clone_box(&self) -> Box<dyn TestTrait>;
-        fn test_method_3(&self, arg: u32) -> &u32;
+        fn test_method_3(&self, arg: u32) -> u32;
     }
     #[allow(non_snake_case)]
     #[allow(missing_docs)]
@@ -1764,24 +1764,56 @@ mod tests {
                 boxed::Box, mem, ops::{DerefMut, Range},
                 sync::Mutex, vec::Vec,
             };
+            #[allow(clippy::unused_unit)]
             enum Rfunc {
-                Default(Option<u32>),
-                Const(u32),
-                _Phantom(Mutex<Box<dyn Fn() + Send>>),
+                Default,
+                Expired,
+                Mut(Box<dyn FnMut(u32) -> u32 + Send>),
+                MutSt(::mockall::Fragile<Box<dyn FnMut(u32) -> u32>>),
+                Once(Box<dyn FnOnce(u32) -> u32 + Send>),
+                OnceSt(::mockall::Fragile<Box<dyn FnOnce(u32) -> u32>>),
+                _Phantom(Box<dyn Fn() + Send>),
             }
             impl Rfunc {
-                fn call(&self) -> std::result::Result<&u32, &'static str> {
+                fn call_mut(
+                    &mut self,
+                    arg: u32,
+                ) -> std::result::Result<u32, &'static str> {
                     match self {
-                        Rfunc::Default(Some(ref __mockall_o)) => {
-                            ::std::result::Result::Ok(__mockall_o)
+                        Rfunc::Default => {
+                            use ::mockall::ReturnDefault;
+                            ::mockall::DefaultReturner::<u32>::return_default()
                         }
-                        Rfunc::Default(None) => {
-                            Err(
-                                "Returning default values requires the \"nightly\" feature",
-                            )
+                        Rfunc::Expired => Err("called twice, but it returns by move"),
+                        Rfunc::Mut(__mockall_f) => {
+                            ::std::result::Result::Ok(__mockall_f(arg))
                         }
-                        Rfunc::Const(ref __mockall_o) => {
-                            ::std::result::Result::Ok(__mockall_o)
+                        Rfunc::MutSt(__mockall_f) => {
+                            ::std::result::Result::Ok((__mockall_f.get_mut())(arg))
+                        }
+                        Rfunc::Once(_) => {
+                            if let Rfunc::Once(mut __mockall_f) = mem::replace(
+                                self,
+                                Rfunc::Expired,
+                            ) {
+                                ::std::result::Result::Ok(__mockall_f(arg))
+                            } else {
+                                ::core::panicking::panic(
+                                    "internal error: entered unreachable code",
+                                )
+                            }
+                        }
+                        Rfunc::OnceSt(_) => {
+                            if let Rfunc::OnceSt(mut __mockall_f) = mem::replace(
+                                self,
+                                Rfunc::Expired,
+                            ) {
+                                ::std::result::Result::Ok((__mockall_f.into_inner())(arg))
+                            } else {
+                                ::core::panicking::panic(
+                                    "internal error: entered unreachable code",
+                                )
+                            }
                         }
                         Rfunc::_Phantom(_) => {
                             ::core::panicking::panic(
@@ -1793,10 +1825,7 @@ mod tests {
             }
             impl std::default::Default for Rfunc {
                 fn default() -> Self {
-                    use ::mockall::ReturnDefault;
-                    Rfunc::Default(
-                        ::mockall::DefaultReturner::<u32>::maybe_return_default(),
-                    )
+                    Rfunc::Default
                 }
             }
             enum Matcher {
@@ -2011,17 +2040,17 @@ mod tests {
                     }
                 }
             }
-            /// Expectation type for methods taking a `&self` argument and
-            /// returning immutable references.  This is the type returned by
-            /// the `expect_*` methods.
+            /// Expectation type for methods that return a `'static` type.
+            /// This is the type returned by the `expect_*` methods.
             pub struct Expectation {
                 common: Common,
-                rfunc: Rfunc,
+                rfunc: Mutex<Rfunc>,
             }
             #[allow(clippy::unused_unit)]
             impl Expectation {
                 /// Call this [`Expectation`] as if it were the real method.
-                pub fn call(&self, arg: u32) -> &u32 {
+                #[doc(hidden)]
+                pub fn call(&self, arg: u32) -> u32 {
                     self.common
                         .call(
                             &{
@@ -2035,8 +2064,10 @@ mod tests {
                             },
                         );
                     self.rfunc
-                        .call()
-                        .unwrap_or_else(|m| {
+                        .lock()
+                        .unwrap()
+                        .call_mut(arg)
+                        .unwrap_or_else(|message| {
                             let desc = {
                                 let res = ::alloc::fmt::format(
                                     format_args!("{0}", self.common.matcher.lock().unwrap()),
@@ -2049,15 +2080,125 @@ mod tests {
                                         "{0}: Expectation({1}) {2}",
                                         "MockTestTrait::test_method_3",
                                         desc,
-                                        m,
+                                        message,
                                     ),
                                 );
                             };
                         })
                 }
-                /// Return a reference to a constant value from the `Expectation`
-                pub fn return_const(&mut self, __mockall_o: u32) -> &mut Self {
-                    self.rfunc = Rfunc::Const(__mockall_o);
+                /// Return a constant value from the `Expectation`
+                ///
+                /// The output type must be `Clone`.  The compiler can't always
+                /// infer the proper type to use with this method; you will
+                /// usually need to specify it explicitly.  i.e.
+                /// `return_const(42i32)` instead of `return_const(42)`.
+                #[allow(unused_variables)]
+                pub fn return_const<MockallOutput>(
+                    &mut self,
+                    __mockall_c: MockallOutput,
+                ) -> &mut Self
+                where
+                    MockallOutput: Clone + Into<u32> + Send + 'static,
+                {
+                    self.returning(move |arg| __mockall_c.clone().into())
+                }
+                /// Single-threaded version of
+                /// [`return_const`](#method.return_const).  This is useful for
+                /// return types that are not `Send`.
+                ///
+                /// The output type must be `Clone`.  The compiler can't always
+                /// infer the proper type to use with this method; you will
+                /// usually need to specify it explicitly.  i.e.
+                /// `return_const(42i32)` instead of `return_const(42)`.
+                ///
+                /// It is a runtime error to call the mock method from a
+                /// different thread than the one that originally called this
+                /// method.
+                #[allow(unused_variables)]
+                pub fn return_const_st<MockallOutput>(
+                    &mut self,
+                    __mockall_c: MockallOutput,
+                ) -> &mut Self
+                where
+                    MockallOutput: Clone + Into<u32> + 'static,
+                {
+                    self.returning_st(move |arg| __mockall_c.clone().into())
+                }
+                /// Supply an `FnOnce` closure that will provide the return
+                /// value for this Expectation.  This is useful for return types
+                /// that aren't `Clone`.  It will be an error to call this
+                /// method multiple times.
+                pub fn return_once<MockallF>(
+                    &mut self,
+                    __mockall_f: MockallF,
+                ) -> &mut Self
+                where
+                    MockallF: FnOnce(u32) -> u32 + Send + 'static,
+                {
+                    {
+                        let mut __mockall_guard = self.rfunc.lock().unwrap();
+                        *__mockall_guard
+                            .deref_mut() = Rfunc::Once(Box::new(__mockall_f));
+                    }
+                    self
+                }
+                /// Single-threaded version of
+                /// [`return_once`](#method.return_once).  This is useful for
+                /// return types that are neither `Send` nor `Clone`.
+                ///
+                /// It is a runtime error to call the mock method from a
+                /// different thread than the one that originally called this
+                /// method.  It is also a runtime error to call the method more
+                /// than once.
+                pub fn return_once_st<MockallF>(
+                    &mut self,
+                    __mockall_f: MockallF,
+                ) -> &mut Self
+                where
+                    MockallF: FnOnce(u32) -> u32 + 'static,
+                {
+                    {
+                        let mut __mockall_guard = self.rfunc.lock().unwrap();
+                        *__mockall_guard
+                            .deref_mut() = Rfunc::OnceSt(
+                            ::mockall::Fragile::new(Box::new(__mockall_f)),
+                        );
+                    }
+                    self
+                }
+                /// Supply a closure that will provide the return value for this
+                /// `Expectation`.  The method's arguments are passed to the
+                /// closure by value.
+                pub fn returning<MockallF>(&mut self, __mockall_f: MockallF) -> &mut Self
+                where
+                    MockallF: FnMut(u32) -> u32 + Send + 'static,
+                {
+                    {
+                        let mut __mockall_guard = self.rfunc.lock().unwrap();
+                        *__mockall_guard.deref_mut() = Rfunc::Mut(Box::new(__mockall_f));
+                    }
+                    self
+                }
+                /// Single-threaded version of [`returning`](#method.returning).
+                /// Can be used when the argument or return type isn't `Send`.
+                ///
+                /// It is a runtime error to call the mock method from a
+                /// different thread than the one that originally called this
+                /// method.
+                pub fn returning_st<MockallF>(
+                    &mut self,
+                    __mockall_f: MockallF,
+                ) -> &mut Self
+                where
+                    MockallF: FnMut(u32) -> u32 + 'static,
+                {
+                    {
+                        let mut __mockall_guard = self.rfunc.lock().unwrap();
+                        *__mockall_guard
+                            .deref_mut() = Rfunc::MutSt(
+                            ::mockall::Fragile::new(Box::new(__mockall_f)),
+                        );
+                    }
                     self
                 }
                 /// Add this expectation to a
@@ -2146,7 +2287,7 @@ mod tests {
                 fn default() -> Self {
                     Expectation {
                         common: Common::default(),
-                        rfunc: Rfunc::default(),
+                        rfunc: Mutex::new(Rfunc::default()),
                     }
                 }
             }
@@ -2179,7 +2320,7 @@ mod tests {
                 /// Simulate calling the real method.  Every current expectation
                 /// will be checked in FIFO order and the first one with
                 /// matching arguments will be used.
-                pub fn call(&self, arg: u32) -> Option<&u32> {
+                pub fn call(&self, arg: u32) -> Option<u32> {
                     self.0
                         .iter()
                         .find(|__mockall_e| {
@@ -2303,7 +2444,7 @@ mod tests {
             };
             self.TestTrait_expectations.clone_box.call().expect(&no_match_msg)
         }
-        fn test_method_3(&self, arg: u32) -> &u32 {
+        fn test_method_3(&self, arg: u32) -> u32 {
             let no_match_msg = {
                 let res = ::alloc::fmt::format(
                     format_args!(
@@ -2354,6 +2495,7 @@ mod tests {
             self.TestTrait_expectations.test_method_3.expect()
         }
     }
+    /// A wrapper around a mockall mock that share the expectation and when a clone_box is called it will return a boxed version of the mock instead of trigger the expectation.
     pub struct MockTestTraitWrapper {
         inner: Arc<RwLock<MockTestTrait>>,
     }
@@ -2382,7 +2524,7 @@ mod tests {
         fn clone_box(&self) -> Box<dyn TestTrait> {
             Box::new(self.clone())
         }
-        fn test_method_3(&self, arg: u32) -> &u32 {
+        fn test_method_3(&self, arg: u32) -> u32 {
             self.inner.read().unwrap().test_method_3(arg)
         }
     }

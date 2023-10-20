@@ -80,8 +80,7 @@ fn generated_wrap(input: &proc_macro2::TokenStream, trait_has_mut: bool) -> Toke
         }
     }
     quote! {
-            /// A wrapper around a mockall mock that share the expectation and when a clone_box is called
-            /// it will return a boxed version of the mock instead of trigger the expectation.
+            #[doc=" A wrapper around a mockall mock that share the expectation and when a clone_box is called it will return a boxed version of the mock instead of trigger the expectation."]
             pub struct #struct_name {
                 inner: #inner_type,
             }
